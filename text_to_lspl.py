@@ -5,6 +5,7 @@ from parse import *
 import pymorphy2
 import re
 
+# class for processing lines of input file
 class string_processor:
     def __init__ (self, filename):
         self.output_file = open(filename, 'w')
@@ -22,8 +23,6 @@ class string_processor:
          '\]|\(' + words_comma_separated_pattern_str + '\)|' +\
           word_pattern_str
 
-        # declaration_pattern_str = '^(?:' + word_pattern_str + ')(?: \(' + '.+' + '\))?$'
-
         extra_parts_pattern_str = ';[^;]+'
 
         self.top_level_pattern = re.compile(top_level_pattern_str)
@@ -31,8 +30,6 @@ class string_processor:
         self.word_pattern = re.compile(word_pattern_str)
 
         self.extra_parts_pattern = re.compile(extra_parts_pattern_str)
-
-        # self.declaration_pattern = re.compile(declaration_pattern_str)
 
     def process (self, string):
         if self.output_needed(string):
@@ -47,6 +44,7 @@ class string_processor:
 
             # processing extra parts (after ';')
             top_level_words = self.word_pattern.findall(string) # to change to split
+            # top_level_words = re.split(';', string)
             main_verb = top_level_words[0]
 
             extra_parts = self.extra_parts_pattern.findall(string)
@@ -328,8 +326,8 @@ if __name__ == "__main__":
     '  с проповедью (о ком)'
     test_string2 = 'выявить пригодность (чего для чего)'
 
-    to_use_input_file = False
     # to_use_input_file = True
+    to_use_input_file = False
 
     if to_use_input_file:
         input_file = open("dict_to_work_with.txt", 'r')
