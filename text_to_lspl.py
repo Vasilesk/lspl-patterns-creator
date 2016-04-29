@@ -136,6 +136,31 @@ class lspl_template_maker:
                                             'Ap', 'Pn', 'Av', 'Cn',
                                             'Pr', 'Pt', 'Int', 'Num']
 
+        self.pymorphy_types_translator = {
+                                             'INFN': 'V',
+                                             'NOUN': 'N',
+                                             'PREP': 'Pr',
+                                             'ADJF': 'A',
+                                             'PRTF': 'Pa',
+                                             'ADVB': 'Av',
+                                             'PRCL': 'Pt',
+                                             'NPRO': 'Pn'
+                                         }
+
+        self.pymorphy_cases_translator = {
+                                             'nomn': 'nom',
+                                             'gent': 'gen',
+                                             'datv': 'dat',
+                                             'accs': 'acc',
+                                             'ablt': 'ins',
+                                             'loct': 'prep',
+                                             # below are cases that are translated into best matching lspl cases
+                                             'voct': 'nom',
+                                             'gen2': 'gen',
+                                             'acc2': 'acc',
+                                             'loc2': 'prep'
+                                         }
+
         self.part_of_speech_types = dict.fromkeys(self.part_of_speech_type_names, 0)
 
         self.total_template = []
@@ -145,7 +170,7 @@ class lspl_template_maker:
         self.total_template.append(template)
 
     def add_alternatives_from_list(self, alternatives_list, rebuild_pronoun = False):
-        # this True can be changed to new argument value
+        # this True can be changed to new argument value in the future
         result_template = {'is_list': True, 'is_optional': True}
         result_value = []
         for alternative in alternatives_list:
@@ -194,7 +219,6 @@ class lspl_template_maker:
                 element_string += '>'
                 if element['is_optional']:
                     element_string = '[' + element_string + ']'
-                    print ("here!")
                 result += element_string
 
         return result
@@ -239,7 +263,7 @@ class lspl_template_maker:
             i = 0
             was_found = False
             for possible_word in possible_words:
-                lspl_type = self.get_lspl_type(possible_word.tag)
+                lspl_type = self.get_lspl_type(possible_word.tag.POS)
                 if (lspl_type == desirable_type):
                     was_found = True
                     break
@@ -254,7 +278,7 @@ class lspl_template_maker:
 
         normal_form = word_parsed.normal_form
 
-        lspl_type = self.get_lspl_type(tag)
+        lspl_type = self.get_lspl_type(tag.POS)
 
         result = {'type_name': lspl_type, 'normal_form': normal_form}
 
@@ -265,23 +289,9 @@ class lspl_template_maker:
 
         return result
 
-    def get_lspl_type(self, tag):
-        if 'INFN' in tag:
-            lspl_type = 'V'
-        elif 'NOUN' in tag:
-            lspl_type = 'N'
-        elif 'PREP' in tag:
-            lspl_type = 'Pr'
-        elif 'ADJF' in tag:
-            lspl_type = 'A'
-        elif 'PRTF' in tag:
-            lspl_type = 'Pa'
-        elif 'ADVB' in tag:
-            lspl_type = 'Av'
-        elif 'PRCL' in tag:
-            lspl_type = 'Pt'
-        elif 'NPRO' in tag:
-            lspl_type = 'Pn'
+    def get_lspl_type(self, pymorphy_type):
+        if pymorphy_type in self.pymorphy_types_translator:
+            lspl_type = self.pymorphy_types_translator[pymorphy_type]
         else:
             # Part of speech type was not detected.
             # Consider it to be `word`
@@ -289,30 +299,9 @@ class lspl_template_maker:
 
         return lspl_type
 
-    def get_lspl_case(self, case):
-        if case == 'nomn':
-            lspl_case = 'nom'
-        elif case == 'gent':
-            lspl_case = 'gen'
-        elif case == 'datv':
-            lspl_case = 'dat'
-        elif case == 'accs':
-            lspl_case = 'acc'
-        elif case == 'ablt':
-            lspl_case = 'ins'
-        elif case == 'loct':
-            lspl_case = 'prep'
-
-        # below are cases that are translated into best matching lspl cases
-        elif case == 'voct':
-            lspl_case = 'nom'
-        elif case == 'gen2':
-            lspl_case = 'gen'
-        elif case == 'acc2':
-            lspl_case = 'acc'
-        elif case == 'loc2':
-            lspl_case = 'prep'
-
+    def get_lspl_case(self, pymorphy_case):
+        if pymorphy_case in self.pymorphy_cases_translator:
+            lspl_case = self.pymorphy_cases_translator[pymorphy_case]
         else:
             lspl_case = ''
 
