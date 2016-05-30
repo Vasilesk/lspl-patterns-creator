@@ -1,18 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf8 -*-
 
-from parse import *
 import pymorphy2
 import re
 
 # class for processing lines of input file
-class string_processor:
+class String_processor:
     def __init__ (self, filename):
         self.output_file = open(filename, 'w')
 
         self.template_number = 0
 
-        self.lspl_template = lspl_template_maker()
+        self.lspl_template = Lspl_template_maker()
 
         word_pattern_str = '[^; ,\(\)\[\]\n]+'
 
@@ -128,7 +127,7 @@ class string_processor:
         self.output_file.close()
 
 
-class lspl_template_maker:
+class Lspl_template_maker:
     def __init__ (self):
         self.morph = morph = pymorphy2.MorphAnalyzer()
 
@@ -144,7 +143,8 @@ class lspl_template_maker:
                                              'PRTF': 'Pa',
                                              'ADVB': 'Av',
                                              'PRCL': 'Pt',
-                                             'NPRO': 'Pn'
+                                             'NPRO': 'Pn',
+                                             'CONJ': 'Cn'
                                          }
 
         self.pymorphy_cases_translator = {
@@ -181,29 +181,38 @@ class lspl_template_maker:
         self.total_template.append(result_template)
 
     def fetch_template_as_string (self):
-        result = self.get_template_as_string(self.total_template)
+        template_string_and_linear_word_list = self.get_template_string_and_linear_word_list(self.total_template, [])
+        matching_str = self.get_matching_as_string (template_string_and_linear_word_list['linear_word_list'])
+        result_str = template_string_and_linear_word_list['template_string'] + matching_str
 
         self.total_template = []
         for type_name in self.part_of_speech_type_names:
             self.part_of_speech_types[type_name] = 0
 
-        return result
+        return result_str
 
-    def get_template_as_string (self, template, is_option = False):
-        result = ''
+    def get_template_string_and_linear_word_list (self, template, linear_word_list, is_option = False):
+        result_string = ''
         for element in template:
             if element['is_list']:
-                to_add = self.get_template_as_string(element['value'], element['is_optional'])
+                recursive_data_getting = self.get_template_string_and_linear_word_list(element['value'],
+                                                                        linear_word_list,
+                                                                        element['is_optional'])
+                str_to_add = recursive_data_getting['template_string']
+                linear_word_list = recursive_data_getting['linear_word_list']
                 if element['is_optional']:
-                    to_add = ' [' + to_add[3:] + ']' # deleting first `|`
+                    str_to_add = ' [' + str_to_add[3:] + ']' # deleting first `|`
                 if is_option:
-                    result += ' |'
-                result += to_add
+                    result_string += ' |'
+                result_string += str_to_add
             else:
                 element_template = element['value']
                 element_string = ' ' + element_template['type_name'] +\
                                 str(element_template['type_number']) +\
                                 '<'
+                linear_word_list.append({'type_name': element_template['type_name'],
+                                         'type_number': str(element_template['type_number'])})
+
                 first_element_is_set = False
                 if 'normal_form' in element_template:
                     element_string += element_template['normal_form']
@@ -219,9 +228,32 @@ class lspl_template_maker:
                 element_string += '>'
                 if element['is_optional']:
                     element_string = '[' + element_string + ']'
-                result += element_string
+                result_string += element_string
 
-        return result
+        return {'template_string': result_string, 'linear_word_list': linear_word_list}
+
+    def get_matching_as_string (self, linear_word_list):
+        result_string = ''
+        matching_list = []
+        one_matching_buffer = []
+        for element in linear_word_list:
+            if element['type_name'] == 'Pa' or element['type_name'] == 'A' or element['type_name'] == 'N' :
+                one_matching_buffer.append(element)
+                if element['type_name'] == 'N':
+                    if not one_matching_buffer[0]['type_name'] == 'N':
+                        matching_list.append(one_matching_buffer)
+                    one_matching_buffer = []
+
+        for one_matching in matching_list:
+            first_element = one_matching.pop()
+            result_string = first_element['type_name'] + first_element['type_number']
+            for element in one_matching:
+                result_string += '=' + element['type_name'] + element['type_number']
+
+        if not result_string == '':
+            result_string = '<' + result_string + '>'
+
+        return result_string
 
     def get_word_template (self, word, rebuild_pronoun = False, is_optional = False):
         if rebuild_pronoun:
@@ -282,7 +314,8 @@ class lspl_template_maker:
 
         result = {'type_name': lspl_type, 'normal_form': normal_form}
 
-        if word_parsed.tag.case:
+        # if word_parsed.tag.case: -- adding case to any part of speech having it
+        if lspl_type == 'N' or lspl_type == 'Pn':
             lspl_case = self.get_lspl_case(tag.case)
             result.update({'c': lspl_case})
 
@@ -323,7 +356,7 @@ if __name__ == "__main__":
     else:
         input_file = [test_string, test_string2]
 
-    line_processor = string_processor("generated_templates.txt")
+    line_processor = String_processor("generated_templates.txt")
 
     for line in input_file:
         line_processor.process(line)
