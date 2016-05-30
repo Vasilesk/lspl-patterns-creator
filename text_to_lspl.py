@@ -287,22 +287,23 @@ class Lspl_template_maker:
 
         return self.part_of_speech_types[part_of_speech_type]
 
-    def get_part_of_speech_data (self, word, desirable_type = ''):
+    def get_part_of_speech_data (self, word, desirable_type = '', desirable_case = ''):
         possible_words = self.morph.parse(word)
+        desirable_words = []
+
         if desirable_type == '':
             word_parsed = possible_words[0]
         else:
-            i = 0
             was_found = False
             for possible_word in possible_words:
                 lspl_type = self.get_lspl_type(possible_word.tag.POS)
                 if (lspl_type == desirable_type):
+                    desirable_words.append(possible_word)
                     was_found = True
-                    break
-                i += 1
 
             if was_found:
-                word_parsed = possible_words[i]
+                # desirable_words.reverse()
+                word_parsed = desirable_words[0]
             else:
                 word_parsed = possible_words[0]
 
