@@ -256,11 +256,11 @@ class Lspl_template_maker:
         return result_string
 
     def get_word_template (self, word, rebuild_pronoun = False, is_optional = False):
+        desirable_types = ['Pt', 'Pr', 'A', 'Pa', 'N', 'Av', 'V']
+        desirable_cases = ['acc']
         if rebuild_pronoun:
-            word_data = self.get_part_of_speech_data(word, 'Pn')
-
-        else:
-            word_data = self.get_part_of_speech_data(word)
+            desirable_types.insert(0, 'Pn')
+        word_data = self.get_part_of_speech_data(word, desirable_types, desirable_cases)
 
         if rebuild_pronoun and (word_data['type_name'] == 'Pn'):
             part_of_speech_number = self.new_part_of_speech_number('N')
@@ -287,25 +287,25 @@ class Lspl_template_maker:
 
         return self.part_of_speech_types[part_of_speech_type]
 
-    def get_part_of_speech_data (self, word, desirable_type = '', desirable_case = ''):
+    def get_part_of_speech_data (self, word, desirable_types = [], desirable_cases = []):
+        types_need_cases = ['N', 'Pn']
         possible_words = self.morph.parse(word)
-        desirable_words = []
 
-        if desirable_type == '':
+        if desirable_types == []:
             word_parsed = possible_words[0]
         else:
-            was_found = False
-            for possible_word in possible_words:
-                lspl_type = self.get_lspl_type(possible_word.tag.POS)
-                if (lspl_type == desirable_type):
-                    desirable_words.append(possible_word)
-                    was_found = True
-
-            if was_found:
-                # desirable_words.reverse()
-                word_parsed = desirable_words[0]
-            else:
+            desirable_type_words = self.get_desirable_type_words(possible_words, desirable_types)
+            if desirable_type_words == []:
                 word_parsed = possible_words[0]
+            else:
+                if desirable_cases == []:
+                    word_parsed = desirable_type_words[0]
+                else:
+                    desirable_case_words = self.get_desirable_case_words(desirable_type_words, desirable_cases)
+                    if desirable_case_words == []:
+                        word_parsed = desirable_type_words[0]
+                    else:
+                        word_parsed = desirable_case_words[0]
 
         tag = word_parsed.tag
 
@@ -316,12 +316,41 @@ class Lspl_template_maker:
         result = {'type_name': lspl_type, 'normal_form': normal_form}
 
         # if word_parsed.tag.case: -- adding case to any part of speech having it
-        if lspl_type == 'N' or lspl_type == 'Pn':
+        if lspl_type in types_need_cases:
             lspl_case = self.get_lspl_case(tag.case)
             result.update({'c': lspl_case})
 
-
         return result
+
+    def get_desirable_type_words(self, possible_words, desirable_types):
+        words_with_desirable_types = dict.fromkeys(desirable_types, [])
+
+        for possible_word in possible_words:
+            lspl_type = self.get_lspl_type(possible_word.tag.POS)
+            if (lspl_type in desirable_types):
+                value = words_with_desirable_types[lspl_type].copy()
+                value.append(possible_word)
+                words_with_desirable_types.update({lspl_type: value})
+
+        for desirable_type in desirable_types:
+            if not words_with_desirable_types[desirable_type] == []:
+                return words_with_desirable_types[desirable_type]
+        return []
+
+    def get_desirable_case_words(self, possible_words, desirable_cases):
+        words_with_desirable_cases = dict.fromkeys(desirable_cases, [])
+
+        for possible_word in possible_words:
+            lspl_case = self.get_lspl_case(possible_word.tag.case)
+            if (lspl_case in desirable_cases):
+                value = words_with_desirable_cases[lspl_case].copy()
+                value.append(possible_word)
+                words_with_desirable_cases.update({lspl_case: value})
+
+        for desirable_case in desirable_cases:
+            if not words_with_desirable_cases[desirable_case] == []:
+                return words_with_desirable_cases[desirable_case]
+        return []
 
     def get_lspl_type(self, pymorphy_type):
         if pymorphy_type in self.pymorphy_types_translator:
@@ -344,10 +373,12 @@ class Lspl_template_maker:
 if __name__ == "__main__":
     print ("Text to lspl")
     print ("processing...")
-    test_string = 'выступить с докладом (чего, о чем);' +\
+    test_string1 = 'выступить с докладом (чего, о чем);' +\
     ' с [новой, следующей, имеющейся] гипотезой (чего, о чём);' +\
     '  с проповедью (о ком)'
     test_string2 = 'выявить пригодность (чего для чего)'
+    test_string3 = 'вытекать из закона (чего, о чем)'
+    test_string4 = 'выступить горячим'
 
     # to_use_input_file = True
     to_use_input_file = False
@@ -355,7 +386,7 @@ if __name__ == "__main__":
     if to_use_input_file:
         input_file = open("dict_to_work_with.txt", 'r')
     else:
-        input_file = [test_string, test_string2]
+        input_file = [test_string1, test_string2, test_string3, test_string4]
 
     line_processor = String_processor("generated_templates.txt")
 
