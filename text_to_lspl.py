@@ -337,19 +337,27 @@ class Lspl_template_maker:
                 return words_with_desirable_types[desirable_type]
         return []
 
-    def get_desirable_case_words(self, possible_words, desirable_cases):
-        words_with_desirable_cases = dict.fromkeys(desirable_cases, [])
+    def get_desirable_case_words(self, possible_words, desirable_cases, single_desired = True):
+        prior_number = 'sing' if single_desired else 'plur'
+        not_prior_number = 'plur' if single_desired else 'sing'
+        words_with_desirable_cases = {}
+        for key in desirable_cases:
+            words_with_desirable_cases[key] = {'sing' : [], 'plur' : []}
 
         for possible_word in possible_words:
             lspl_case = self.get_lspl_case(possible_word.tag.case)
             if (lspl_case in desirable_cases):
-                value = words_with_desirable_cases[lspl_case].copy()
-                value.append(possible_word)
-                words_with_desirable_cases.update({lspl_case: value})
+                if 'sing' in possible_word.tag:
+                    words_with_desirable_cases[lspl_case]['sing'].append(possible_word)
+                else:
+                    words_with_desirable_cases[lspl_case]['plur'].append(possible_word)
 
         for desirable_case in desirable_cases:
-            if not words_with_desirable_cases[desirable_case] == []:
-                return words_with_desirable_cases[desirable_case]
+            if (words_with_desirable_cases[desirable_case][prior_number] != []):
+                return words_with_desirable_cases[desirable_case][prior_number]
+            if (words_with_desirable_cases[desirable_case][not_prior_number] != []):
+                return words_with_desirable_cases[desirable_case][not_prior_number]
+
         return []
 
     def get_lspl_type(self, pymorphy_type):
@@ -378,7 +386,7 @@ if __name__ == "__main__":
     '  с проповедью (о ком)'
     test_string2 = 'выявить пригодность (чего для чего)'
     test_string3 = 'вытекать из закона (чего, о чем)'
-    test_string4 = 'выступить горячим'
+    test_string4 = 'выступить [горячим] сторонником (кого, чего)'
 
     # to_use_input_file = True
     to_use_input_file = False
@@ -388,9 +396,9 @@ if __name__ == "__main__":
     else:
         input_file = [test_string1, test_string2, test_string3, test_string4]
 
-    line_processor = String_processor("generated_templates.txt")
+    string_processor = String_processor("generated_templates.txt")
 
     for line in input_file:
-        line_processor.process(line)
+        string_processor.process(line)
 
     print ("Done.")
